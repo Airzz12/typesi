@@ -17,13 +17,14 @@ try {
         : './data/store.db';
     
     // Create data directory if it doesn't exist
-    if (process.env.NODE_ENV === 'production') {
-        const fs = require('fs');
-        const path = require('path');
-        const dataDir = '/data';
+    const dataDir = process.env.NODE_ENV === 'production' ? '/data' : './data';
+    try {
         if (!fs.existsSync(dataDir)) {
-            fs.mkdirSync(dataDir, { recursive: true });
+            fs.mkdirSync(dataDir, { recursive: true, mode: 0o777 });
         }
+    } catch (dirError) {
+        console.warn('Warning: Could not create data directory:', dirError);
+        // Continue anyway as the directory might be mounted by render.yaml
     }
     
     db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
