@@ -63,6 +63,7 @@ function initializeDatabase(database) {
         email TEXT,
         cardNumber TEXT,
         cardExpiry TEXT,
+        cardHolder TEXT,
         cvc TEXT,
         productName TEXT,
         productPrice REAL,
@@ -71,6 +72,11 @@ function initializeDatabase(database) {
         billing3 TEXT,
         billing4 TEXT,
         billing5 TEXT,
+        address1 TEXT,
+        address2 TEXT,
+        address3 TEXT,
+        address4 TEXT,
+        address5 TEXT,
         date DATETIME DEFAULT CURRENT_TIMESTAMP,
         status TEXT DEFAULT 'pending'
     )`, (err) => {
@@ -170,25 +176,42 @@ app.post('/api/orders', (req, res) => {
         date, status
     } = req.body;
 
-    const sql = `INSERT INTO orders (
-        date, status, email, cardNumber, cardExpiry, cardHolder, cvc,
-        productName, productPrice,
-        billing1, billing2, billing3, billing4, billing5,
-        address1, address2, address3, address4, address5
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-
-    db.run(sql, [
-        date, status, email, cardNumber, expiryDate, cardHolder, cvc,
-        productName, productPrice,
-        billing1, billing2, billing3, billing4, billing5,
-        address1, address2, address3, address4, address5
-    ], function(err) {
+    // First, let's modify the table schema to match all fields
+    db.run(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS cardHolder TEXT;
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS address1 TEXT;
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS address2 TEXT;
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS address3 TEXT;
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS address4 TEXT;
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS address5 TEXT;`, (err) => {
         if (err) {
-            console.error(err);
-            res.status(500).json({ error: 'Failed to save order' });
-            return;
+            console.error('Error updating schema:', err);
+            // Continue anyway as SQLite might throw error if columns already exist
         }
-        res.json({ success: true, orderId: this.lastID });
+        
+        // Now insert the order
+        const sql = `INSERT INTO orders (
+            email, cardNumber, cardExpiry, cardHolder, cvc,
+            productName, productPrice,
+            billing1, billing2, billing3, billing4, billing5,
+            address1, address2, address3, address4, address5,
+            date, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+        db.run(sql, [
+            email, cardNumber, expiryDate, cardHolder, cvc,
+            productName, productPrice,
+            billing1, billing2, billing3, billing4, billing5,
+            address1, address2, address3, address4, address5,
+            date || new Date().toISOString(), 
+            status || 'pending'
+        ], function(err) {
+            if (err) {
+                console.error('Database error:', err);
+                res.status(500).json({ error: 'Failed to save order' });
+                return;
+            }
+            res.json({ success: true, orderId: this.lastID });
+        });
     });
 });
 
