@@ -176,42 +176,29 @@ app.post('/api/orders', (req, res) => {
         date, status
     } = req.body;
 
-    // First, let's modify the table schema to match all fields
-    db.run(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS cardHolder TEXT;
-            ALTER TABLE orders ADD COLUMN IF NOT EXISTS address1 TEXT;
-            ALTER TABLE orders ADD COLUMN IF NOT EXISTS address2 TEXT;
-            ALTER TABLE orders ADD COLUMN IF NOT EXISTS address3 TEXT;
-            ALTER TABLE orders ADD COLUMN IF NOT EXISTS address4 TEXT;
-            ALTER TABLE orders ADD COLUMN IF NOT EXISTS address5 TEXT;`, (err) => {
-        if (err) {
-            console.error('Error updating schema:', err);
-            // Continue anyway as SQLite might throw error if columns already exist
-        }
-        
-        // Now insert the order
-        const sql = `INSERT INTO orders (
-            email, cardNumber, cardExpiry, cardHolder, cvc,
-            productName, productPrice,
-            billing1, billing2, billing3, billing4, billing5,
-            address1, address2, address3, address4, address5,
-            date, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    // Insert the order directly since we already created all columns in initializeDatabase
+    const sql = `INSERT INTO orders (
+        email, cardNumber, cardExpiry, cardHolder, cvc,
+        productName, productPrice,
+        billing1, billing2, billing3, billing4, billing5,
+        address1, address2, address3, address4, address5,
+        date, status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-        db.run(sql, [
-            email, cardNumber, expiryDate, cardHolder, cvc,
-            productName, productPrice,
-            billing1, billing2, billing3, billing4, billing5,
-            address1, address2, address3, address4, address5,
-            date || new Date().toISOString(), 
-            status || 'pending'
-        ], function(err) {
-            if (err) {
-                console.error('Database error:', err);
-                res.status(500).json({ error: 'Failed to save order' });
-                return;
-            }
-            res.json({ success: true, orderId: this.lastID });
-        });
+    db.run(sql, [
+        email, cardNumber, expiryDate, cardHolder, cvc,
+        productName, productPrice,
+        billing1, billing2, billing3, billing4, billing5,
+        address1, address2, address3, address4, address5,
+        date || new Date().toISOString(), 
+        status || 'pending'
+    ], function(err) {
+        if (err) {
+            console.error('Database error:', err);
+            res.status(500).json({ error: 'Failed to save order' });
+            return;
+        }
+        res.json({ success: true, orderId: this.lastID });
     });
 });
 
