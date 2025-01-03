@@ -8,6 +8,11 @@ const fs = require('fs');
 const puppeteer = require('puppeteer');
 const app = express();
 
+// Update database path for Render
+const dbPath = process.env.NODE_ENV === 'production' 
+  ? '/data/store.db'
+  : './store.db';
+
 // Add EJS as template engine
 app.set('view engine', 'ejs');
 
@@ -69,7 +74,7 @@ app.post('/admin/logout', (req, res) => {
 });
 
 // Initialize SQLite database
-const db = new sqlite3.Database('store.db', (err) => {
+const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error opening database:', err);
     } else {
