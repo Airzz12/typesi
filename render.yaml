@@ -4,13 +4,11 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: |
-      npm cache clean --force
-      rm -rf node_modules
-      npm install
+    buildCommand: npm install
+    startCommand: |
       mkdir -p /data
       chmod 777 /data
-    startCommand: node server.js
+      node server.js
     envVars:
       - key: SESSION_SECRET
         value: "780db9dcbc6995ec911b85f760395745aa75069fb384a50d340c4683b027f0d6"
@@ -24,8 +22,6 @@ services:
       sizeGB: 1
     healthCheckPath: /
     autoDeploy: true
-
-    # Node.js specific configurations
     nodeVersion: 18.x
 
 databases:
