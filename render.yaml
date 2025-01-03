@@ -8,6 +8,8 @@ services:
       npm cache clean --force
       rm -rf node_modules
       npm install
+      mkdir -p /data
+      chmod 777 /data
     startCommand: node server.js
     envVars:
       - key: SESSION_SECRET
