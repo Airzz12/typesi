@@ -11,10 +11,20 @@ const app = express();
 // Database configuration
 let db;
 try {
-    // Try to connect to the database
+    // Ensure data directory exists in production
     const dbPath = process.env.NODE_ENV === 'production' 
         ? '/data/store.db'
         : './data/store.db';
+    
+    // Create data directory if it doesn't exist
+    if (process.env.NODE_ENV === 'production') {
+        const fs = require('fs');
+        const path = require('path');
+        const dataDir = '/data';
+        if (!fs.existsSync(dataDir)) {
+            fs.mkdirSync(dataDir, { recursive: true });
+        }
+    }
     
     db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
         if (err) {
@@ -380,6 +390,11 @@ app.post('/generate-preview', (req, res) => {
         console.error('Preview generation error:', error);
         res.status(500).send('Failed to generate preview');
     }
+});
+
+// Add this near your other routes
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'healthy' });
 });
 
 // Start server
