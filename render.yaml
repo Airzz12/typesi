@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: fraud-store
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: |
+      npm cache clean --force
+      rm -rf node_modules
+      npm install
+    startCommand: node server.js
+    envVars:
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+    healthCheckPath: /
+    autoDeploy: true
+
+    # Node.js specific configurations
+    nodeVersion: 18.x
+
+databases:
+  - name: sqlite
+    ipAllowList: 
