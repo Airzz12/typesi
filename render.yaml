@@ -17,7 +17,7 @@ services:
       - key: PORT
         value: 3000
     disk:
-      name: data
+      name: sqlite-data
       mountPath: /data
       sizeGB: 1
     healthCheckPath: /
